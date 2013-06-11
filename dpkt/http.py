@@ -68,7 +68,9 @@ class Message(dpkt.Packet):
     __metaclass__ = type
     __hdr_defaults__ = {}
     headers = None
+    headers_size = -1
     body = None
+    body_size = -1
     
     def __init__(self, *args, **kwargs):
         if args:
@@ -81,20 +83,21 @@ class Message(dpkt.Packet):
             for k, v in kwargs.iteritems():
                 setattr(self, k, v)
     
-    def unpack(self, buf):
-        f = cStringIO.StringIO(buf)
+    def _unpack_message(self, f):
         # Parse headers
         self.headers = parse_headers(f)
+        self.headers_size = f.tell()
         # Parse body
         self.body = parse_body(f, self.headers)
         # Save the rest
         self.data = f.read()
+        self.body_size = f.tell() - self.headers_size
 
     def pack_hdr(self):
         return ''.join([ '%s: %s\r\n' % t for t in self.headers.iteritems() ])
     
     def __len__(self):
-        return len(str(self))
+        return self.headers_size + self.body_size
     
     def __str__(self):
         return '%s\r\n%s' % (self.pack_hdr(), self.body)
@@ -138,7 +141,7 @@ class Request(Message):
             self.version = l[2][len(self.__proto)+1:]
         self.method = l[0]
         self.uri = l[1]
-        Message.unpack(self, f.read())
+        self._unpack_message(f)
 
     def __str__(self):
         return '%s %s %s/%s\r\n' % (self.method, self.uri, self.__proto,
@@ -162,7 +165,7 @@ class Response(Message):
         self.version = l[0][len(self.__proto)+1:]
         self.status = l[1]
         self.reason = l[2]
-        Message.unpack(self, f.read())
+        self._unpack_message(f)
 
     def __str__(self):
         return '%s/%s %s %s\r\n' % (self.__proto, self.version, self.status,
