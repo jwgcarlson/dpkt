@@ -95,6 +95,12 @@ class Message(dpkt.Packet):
 
     def pack_hdr(self):
         return ''.join([ '%s: %s\r\n' % t for t in self.headers.iteritems() ])
+
+    def get_header(self, name, many=False):
+        h = self.headers and self.headers.get(name)
+        if h and isinstance(h, list) and not many:
+            h = h[0]
+        return h
     
     def __len__(self):
         return self.headers_size + self.body_size
