@@ -170,7 +170,7 @@ class Response(Message):
             raise dpkt.UnpackError('invalid response: %r' % line)
         self.version = l[0][len(self.__proto)+1:]
         self.status = l[1]
-        self.reason = l[2]
+        self.reason = l[2] if len(l) == 3 else ''
         self._unpack_message(f)
 
     def __str__(self):
